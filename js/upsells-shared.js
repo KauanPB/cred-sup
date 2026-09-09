@@ -1,66 +1,80 @@
-// Ordem atual da cadeia de upsells.
-// Fluxo: front -> up1 -> up3 -> up4 -> up5 -> up6 -> up7 -> up8 -> up9 -> up10 -> up11 -> up12 -> destino final
-const upsellOrder = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-// Ao terminar toda a cadeia, encerra o funil sem voltar para uma oferta já exibida.
-const finalDestination = 'concluido.html';
-
-function upsellPathFor(n) {
-  return '/up' + n;
-}
-
-function getCookie(name) {
-  const cookies = document.cookie.split('; ');
-  for (const cookie of cookies) {
-    const [cookieName, cookieValue] = cookie.split('=');
-    if (cookieName === name) {
-      return cookieValue;
+const upsellPaths = [
+    '1/index.html',   // Upsell 1
+    '2/index.html',   // Upsell 2
+    '3/index.html',   // Upsell 3
+    '4/index.html',   // Upsell 4
+    '5/index.html',   // Upsell 5
+    '6/index.html',   // Upsell 6
+    '7/index.html',   // Upsell 7
+    '8/index.html',   // Upsell 8
+    '9/index.html',   // Upsell 9
+    '10/index.html',  // Upsell 10
+    '11/index.html',  // Upsell 11
+    '12/index.html',  // Upsell 12
+  ];
+  
+  const finalDestination = 'https://pt.org.br/';
+  
+  function getCookie(name) {
+    const cookieString = document.cookie;
+    const cookies = cookieString.split('; ');
+    
+    for (const cookie of cookies) {
+      const [cookieName, cookieValue] = cookie.split('=');
+      if (cookieName === name) {
+        return cookieValue;
+      }
+    }
+    
+    return null;
+  }
+  
+  function setCookie(name, value, days = 30) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${value};${expires};path=/`;
+  }
+  
+  function markUpsellAsVisited(upsellNumber) {
+    if (upsellNumber >= 1 && upsellNumber <= 10) {
+      setCookie(`visited_upsell_${upsellNumber}`, 'true', 30);
     }
   }
-  return null;
-}
-
-function setCookie(name, value, days = 30) {
-  const date = new Date();
-  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-  const expires = `expires=${date.toUTCString()}`;
-  document.cookie = `${name}=${value};${expires};path=/`;
-}
-
-function markUpsellAsVisited(upsellNumber) {
-  if (upsellOrder.indexOf(upsellNumber) !== -1) {
-    setCookie(`visited_upsell_${upsellNumber}`, 'true', 30);
+  
+  function hasVisitedUpsell(upsellNumber) {
+    return getCookie(`visited_upsell_${upsellNumber}`) === 'true';
   }
-}
 
-function hasVisitedUpsell(upsellNumber) {
-  return getCookie(`visited_upsell_${upsellNumber}`) === 'true';
-}
+  function getNextUpsellIndex() {
+    for (let i = 0; i < upsellPaths.length; i++) {
+      if (!hasVisitedUpsell(i + 1)) {
+        return i;
+      }
+    }
+    return -1; 
+  }
+  
+ 
 
-// Retorna o número do próximo upsell ainda não visitado, na ordem do /ga (-1 = acabou)
-function getNextUpsellNumber() {
-  for (let i = 0; i < upsellOrder.length; i++) {
-    if (!hasVisitedUpsell(upsellOrder[i])) {
-      return upsellOrder[i];
+  function redirectToNextUpsell() {
+    const nextUpsellIndex = getNextUpsellIndex();
+    const queryString = window.location.search; // Obtém a query string atual da URL
+    
+    if (nextUpsellIndex >= 0) {
+      // Anexa a query string à URL da próxima upsell
+      window.location.href = upsellPaths[nextUpsellIndex] + queryString;
+    } else {
+      // Anexa a query string à URL de destino final
+      window.location.href = finalDestination + queryString;
     }
   }
-  return -1;
-}
 
-function redirectToNextUpsell() {
-  const next = getNextUpsellNumber();
-  const queryString = window.location.search; // mantém UTMs/params na navegação
-  if (next >= 0) {
-    window.location.href = upsellPathFor(next) + queryString;
-  } else {
-    window.location.href = finalDestination + queryString;
+  function initUpsell(currentUpsellNumber) {
+    markUpsellAsVisited(currentUpsellNumber);
+    console.log(`Upsell ${currentUpsellNumber} carregado e marcado como visitado.`);
   }
-}
+  
+  window.redirectToNextUpsell = redirectToNextUpsell;
+  window.initUpsell = initUpsell;
 
-function initUpsell(currentUpsellNumber) {
-  markUpsellAsVisited(currentUpsellNumber);
-  console.log(`Upsell ${currentUpsellNumber} carregado e marcado como visitado.`);
-}
-
-window.redirectToNextUpsell = redirectToNextUpsell;
-window.initUpsell = initUpsell;
